@@ -11,7 +11,3 @@ A canvas platformer for GitHub Pages.
 - Restart: `R`
 
 The game also includes touch controls for mobile.
-
-## Deploy
-
-The GitHub Actions workflow in [`.github/workflows/ci.yml`](./.github/workflows/ci.yml) builds the static Next.js export and deploys `out/` to GitHub Pages.
