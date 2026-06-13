@@ -371,14 +371,14 @@ function drawRoundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: n
   ctx.closePath();
 }
 
-function drawGame(ctx: CanvasRenderingContext2D, game: GameState, width: number, height: number) {
+function drawGame(ctx: CanvasRenderingContext2D, game: GameState, width: number, height: number, dpr: number) {
   const scale = Math.max(width / 960, height / 720);
   const viewW = width / scale;
   const viewH = height / scale;
   const offsetY = (viewH - WORLD_H) * 0.5;
   const cam = clamp(game.camera, 0, WORLD_W - viewW);
 
-  ctx.setTransform(scale, 0, 0, scale, 0, 0);
+  ctx.setTransform(scale * dpr, 0, 0, scale * dpr, 0, 0);
   ctx.clearRect(0, 0, viewW, viewH);
 
   const sky = ctx.createLinearGradient(0, 0, 0, viewH);
@@ -616,7 +616,8 @@ export default function CastleQuest() {
 
       gameRef.current = stepGame(gameRef.current, inputRef.current, dt);
       inputRef.current.jump = false;
-      drawGame(ctx, gameRef.current, window.innerWidth, window.innerHeight);
+      const dpr = window.devicePixelRatio || 1;
+      drawGame(ctx, gameRef.current, window.innerWidth, window.innerHeight, dpr);
       setHud(gameRef.current);
       frameRef.current = window.requestAnimationFrame(loop);
     };
