@@ -14,9 +14,9 @@ const sora = Sora({
 });
 
 export const metadata: Metadata = {
-  title: "Crystal Blocks 3D",
+  title: "Castle Runner",
   description:
-    "Trò chơi block puzzle 3D phong cách low-poly, màu sắc rực rỡ, chạy trên Next.js.",
+    "Game platformer kiểu Mario chạy trên Next.js và GitHub Pages.",
 };
 
 export default function RootLayout({

@@ -7,7 +7,6 @@ const nextConfig = {
     unoptimized: true,
   },
   basePath: "/crystal-blocks-3d",
-  assetPrefix: "/crystal-blocks-3d",
 };
 
 export default nextConfig;

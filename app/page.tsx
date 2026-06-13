@@ -1,5 +1,5 @@
-import CrystalBlocksGame from "@/components/crystal-blocks-game";
+import CastleRunnerGame from "@/components/castle-runner";
 
 export default function Home() {
-  return <CrystalBlocksGame />;
+  return <CastleRunnerGame />;
 }
