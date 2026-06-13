@@ -224,6 +224,7 @@ function stepGame(game: GameState, input: Input, dt: number): GameState {
   let lives = game.lives;
   let checkpoint = game.checkpoint;
   let message = game.message;
+  const player = game.player;
 
   const wasBottom = player.y + player.h;
   const axis = (input.right ? 1 : 0) - (input.left ? 1 : 0);
@@ -357,7 +358,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, width: number,
   const viewW = width / scale;
   const viewH = height / scale;
   const offsetY = (viewH - WORLD_H) * 0.5;
-  const cam = clamp(game.camera, 0, WORLD_W - viewW);
+  const cam = clamp(game.camera, 0, LEVELS[game.level - 1].worldW - viewW);
 
   ctx.setTransform(scale * dpr, 0, 0, scale * dpr, 0, 0);
   ctx.clearRect(0, 0, viewW, viewH);
@@ -374,7 +375,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, width: number,
 
   drawBackdrop(ctx, cam, viewW);
 
-  for (const platform of platforms) drawPlatform(ctx, platform);
+  for (const platform of LEVELS[game.level - 1].platforms) drawPlatform(ctx, platform);
   for (const coin of game.coinsList) {
     if (!coin.taken) drawCoin(ctx, coin.x, coin.y, game.time);
   }
@@ -385,7 +386,7 @@ function drawGame(ctx: CanvasRenderingContext2D, game: GameState, width: number,
     if (enemy.alive) drawEnemy(ctx, enemy, game.time);
   }
 
-  drawGoal(ctx);
+  drawGoal(ctx, LEVELS[game.level - 1].goalX);
   drawPlayer(ctx, game.player, game.time);
   ctx.restore();
 }
@@ -515,18 +516,18 @@ function drawEnemy(ctx: CanvasRenderingContext2D, enemy: Enemy, time: number) {
   ctx.fillRect(enemy.x + 24, enemy.y + 9 + wobble, 3, 5);
 }
 
-function drawGoal(ctx: CanvasRenderingContext2D) {
+function drawGoal(ctx: CanvasRenderingContext2D, goalX: number) {
   ctx.fillStyle = "#343843";
-  ctx.fillRect(GOAL_X + 75, 280, 12, 330);
+  ctx.fillRect(goalX + 75, 280, 12, 330);
   ctx.fillStyle = "#f6e36d";
-  ctx.fillRect(GOAL_X + 87, 308, 88, 48);
+  ctx.fillRect(goalX + 87, 308, 88, 48);
   ctx.fillStyle = "#263448";
-  ctx.fillRect(GOAL_X + 150, 492, 190, 118);
+  ctx.fillRect(goalX + 150, 492, 190, 118);
   ctx.fillStyle = "#d6dce6";
-  ctx.fillRect(GOAL_X + 170, 430, 52, 180);
-  ctx.fillRect(GOAL_X + 270, 430, 52, 180);
+  ctx.fillRect(goalX + 170, 430, 52, 180);
+  ctx.fillRect(goalX + 270, 430, 52, 180);
   ctx.fillStyle = "#151a24";
-  ctx.fillRect(GOAL_X + 220, 550, 50, 60);
+  ctx.fillRect(goalX + 220, 550, 50, 60);
 }
 
 function drawPlayer(ctx: CanvasRenderingContext2D, player: Player, time: number) {
@@ -662,7 +663,8 @@ export default function CastleQuest() {
     setHud(gameRef.current);
   };
 
-  const progress = Math.min(100, Math.max(0, Math.round((hud.player.x / GOAL_X) * 100)));
+  const goalX = LEVELS[hud.level - 1]?.goalX ?? 5150;
+  const progress = Math.min(100, Math.max(0, Math.round((hud.player.x / goalX) * 100)));
   const overlay = hud.status === "won" ? "You reached the castle." : hud.status === "lost" ? "Press R or restart." : hud.status === "paused" ? "Paused." : "";
 
   return (
