@@ -298,12 +298,14 @@ function stepGame(game: GameState, input: Input, dt: number): GameState {
     coins += 1;
     score += 100;
     message = "Coin!";
+    sfx.coin();
   }
 
   for (const pickup of pickups) {
     if (pickup.taken) continue;
     if (!overlaps(player, { x: pickup.x - 16, y: pickup.y - 16, w: 32, h: 32 })) continue;
     pickup.taken = true;
+    sfx.pickup();
     if (pickup.kind === "star") {
       player.invincible = 7;
       score += 350;
@@ -630,6 +632,16 @@ class Sfx {
   keyR() {
     this.tone("sine", 440, 660, 0.08, 0.08);
     this.tone("sine", 660, 880, 0.08, 0.06, 0.08);
+  }
+
+  coin() {
+    this.tone("sine", 880, 1320, 0.1, 0.08);
+    this.tone("sine", 1320, 1760, 0.1, 0.06, 0.08);
+  }
+
+  pickup() {
+    this.tone("sine", 523, 1047, 0.2, 0.08);
+    this.tone("sine", 784, 1568, 0.25, 0.06, 0.12);
   }
 
   keyP() {
