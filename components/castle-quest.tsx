@@ -44,6 +44,7 @@ type Player = Rect & {
   coyote: number;
   jumpBuffer: number;
   invincible: number;
+  jumps: number;
 };
 
 type GameStatus = "playing" | "paused" | "won" | "lost" | "levelup";
@@ -163,7 +164,7 @@ function getLevelPlatforms(level: number): Platform[] { return LEVELS[level - 1]
 
 
 function makePlayer(x = 120, y = 520): Player {
-  return { x, y, w: 34, h: 48, vx: 0, vy: 0, face: 1, ground: false, coyote: 0, jumpBuffer: 0, invincible: 1 };
+  return { x, y, w: 34, h: 48, vx: 0, vy: 0, face: 1, ground: false, coyote: 0, jumpBuffer: 0, invincible: 1, jumps: 0 };
 }
 
 function makeGame(level = 1, score = 0, coins = 0, lives = 3): GameState {
@@ -200,9 +201,10 @@ function moveToward(value: number, target: number, amount: number) {
 function hurt(game: GameState): GameState {
   const lives = game.lives - 1;
   if (lives <= 0) {
+    sfx.kill();
     return { ...game, lives: 0, status: "lost", message: "Try again." };
   }
-
+  sfx.hurt();
   return {
     ...game,
     lives,
@@ -245,12 +247,14 @@ function stepGame(game: GameState, input: Input, dt: number): GameState {
   player.coyote = Math.max(0, player.coyote - dt);
   player.invincible = Math.max(0, player.invincible - dt);
 
-  if (player.jumpBuffer > 0 && (player.ground || player.coyote > 0)) {
+  if (player.jumpBuffer > 0 && (player.ground || player.coyote > 0 || player.jumps < 2)) {
     player.vy = -880;
     player.ground = false;
     player.coyote = 0;
     player.jumpBuffer = 0;
-    message = "Jump!";
+    player.jumps += 1;
+    message = player.jumps === 2 ? "Double jump!" : "Jump!";
+    sfx.jump();
   }
 
   player.vy = clamp(player.vy + 2500 * dt, -1200, 980);
@@ -272,11 +276,14 @@ function stepGame(game: GameState, input: Input, dt: number): GameState {
       player.vy = 0;
       player.ground = true;
       player.coyote = 0.12;
+      player.jumps = 0;
     } else if (player.vy < 0) {
       player.y = platform.y + platform.h;
       player.vy = 0;
     }
   }
+
+  if (player.ground && Math.abs(player.vx) > 50) sfx.step();
 
   player.x = clamp(player.x, 0, lv.worldW - player.w);
 
@@ -571,6 +578,97 @@ function formatTime(time: number) {
   return `${minutes}:${(seconds % 60).toString().padStart(2, "0")}`;
 }
 
+class Sfx {
+  private ctx: AudioContext | null = null;
+  private bgmInterval: ReturnType<typeof setInterval> | null = null;
+  private lastStep = 0;
+
+  private getCtx(): AudioContext {
+    if (!this.ctx) this.ctx = new AudioContext();
+    return this.ctx;
+  }
+
+  resume() {
+    if (this.ctx?.state === "suspended") this.ctx.resume();
+  }
+
+  private tone(type: OscillatorType, freq: number, endFreq: number, duration: number, gain: number, delay = 0) {
+    const ctx = this.getCtx();
+    const t = ctx.currentTime + delay;
+    const osc = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, t);
+    osc.frequency.exponentialRampToValueAtTime(endFreq, t + duration);
+    gainNode.gain.setValueAtTime(gain, t);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, t + duration);
+    osc.connect(gainNode);
+    gainNode.connect(ctx.destination);
+    osc.start(t);
+    osc.stop(t + duration);
+  }
+
+  jump() {
+    this.tone("sine", 300, 900, 0.15, 0.12);
+  }
+
+  step() {
+    const now = performance.now();
+    if (now - this.lastStep < 180) return;
+    this.lastStep = now;
+    this.tone("square", 80, 60, 0.04, 0.05);
+  }
+
+  hurt() {
+    this.tone("sawtooth", 200, 80, 0.4, 0.08);
+  }
+
+  kill() {
+    this.tone("square", 400, 60, 0.6, 0.1);
+  }
+
+  keyR() {
+    this.tone("sine", 440, 660, 0.08, 0.08);
+    this.tone("sine", 660, 880, 0.08, 0.06, 0.08);
+  }
+
+  keyP() {
+    this.tone("sine", 523, 659, 0.12, 0.08);
+  }
+
+  startBgm() {
+    if (this.bgmInterval) return;
+    const ctx = this.getCtx();
+    const notes = [523, 587, 659, 784, 659, 587, 523, 523];
+    let i = 0;
+    const play = () => {
+      const t = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gn = ctx.createGain();
+      osc.type = "square";
+      osc.frequency.setValueAtTime(notes[i % notes.length], t);
+      gn.gain.setValueAtTime(0.03, t);
+      gn.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+      osc.connect(gn);
+      gn.connect(ctx.destination);
+      osc.start(t);
+      osc.stop(t + 0.2);
+      i++;
+    };
+    play();
+    this.bgmInterval = setInterval(play, 200);
+  }
+
+  stopBgm() {
+    if (this.bgmInterval) {
+      clearInterval(this.bgmInterval);
+      this.bgmInterval = null;
+    }
+  }
+}
+
+const sfx = new Sfx();
+
 export default function CastleQuest() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const gameRef = useRef<GameState>(makeGame());
@@ -619,6 +717,8 @@ export default function CastleQuest() {
 
   useEffect(() => {
     const down = (event: KeyboardEvent) => {
+      sfx.resume();
+      sfx.startBgm();
       if (event.code === "ArrowLeft" || event.code === "KeyA") inputRef.current.left = true;
       if (event.code === "ArrowRight" || event.code === "KeyD") inputRef.current.right = true;
       if (event.code === "ShiftLeft" || event.code === "ShiftRight") inputRef.current.run = true;
@@ -627,12 +727,16 @@ export default function CastleQuest() {
         inputRef.current.jump = true;
       }
       if (event.code === "KeyP" || event.code === "Escape") {
+        sfx.keyP();
         const next = gameRef.current.status === "paused" ? "playing" : "paused";
         if (gameRef.current.status === "playing" || gameRef.current.status === "paused") {
           gameRef.current = { ...gameRef.current, status: next, message: next === "paused" ? "Paused." : "Go!" };
         }
       }
-      if (event.code === "KeyR") resetGame();
+      if (event.code === "KeyR") {
+        sfx.keyR();
+        resetGame();
+      }
     };
 
     const up = (event: KeyboardEvent) => {
