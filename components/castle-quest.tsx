@@ -768,7 +768,7 @@ export default function CastleQuest() {
   useEffect(() => {
     const down = (event: KeyboardEvent) => {
       sfx.resume();
-      sfx.startBgm();
+      if (event.code === "ArrowLeft" || event.code === "KeyA" || event.code === "ArrowRight" || event.code === "KeyD") sfx.startBgm();
       if (event.code === "ArrowLeft" || event.code === "KeyA") inputRef.current.left = true;
       if (event.code === "ArrowRight" || event.code === "KeyD") inputRef.current.right = true;
       if (event.code === "ShiftLeft" || event.code === "ShiftRight") inputRef.current.run = true;
