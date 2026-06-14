@@ -671,7 +671,7 @@ class Sfx {
   }
 
   startBgm() {
-    if (this.bgmInterval) return;
+    if (this.bgmInterval || this.muted) return;
     const ctx = this.getCtx();
     const notes = [523, 587, 659, 784, 659, 587, 523, 523];
     let i = 0;
